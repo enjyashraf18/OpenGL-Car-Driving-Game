@@ -131,9 +131,10 @@ void setup(void)
 	car_display_list = glGenLists(1);
 	glNewList(car_display_list, GL_COMPILE);
 
+	glTranslatef(0.0, 0.0, 5.0);
 	// car body 
 	glPushMatrix();
-	glRotatef(180.0, 0.0, 1.0, 0.0); // car points down the z-axis initially
+	glRotatef(90.0, 0.0, 1.0, 0.0); // car points down the z-axis initially
 	glColor3f(0.0, 0.7, 0.7);
 	glTranslatef(0.0, -12.5, 0.0);
 	glScalef(2.5, 0.5, 1.0);
@@ -142,7 +143,7 @@ void setup(void)
 
 	// top of the car 
 	glPushMatrix();
-	glRotatef(180.0, 0.0, 1.0, 0.0);
+	glRotatef(90.0, 0.0, 1.0, 0.0);
 	glColor3f(0.0, 0.8, 0.8);
 	glTranslatef(0.0, -10, 0.0);
 	glScalef(2, 0.27, 1.0);
@@ -153,25 +154,25 @@ void setup(void)
 	glColor3f(0.2, 0.2, 0.2);
 
 	glPushMatrix();
-	glRotatef(180.0, 0.0, 1.0, 0.0);
+	glRotatef(90.0, 0.0, 1.0, 0.0);
 	glTranslatef(-4.0, -16, 2.5); // Front-left wheel
 	glutSolidTorus(0.5, 1.0, 10, 10);
 	glPopMatrix();
 
 	glPushMatrix();
-	glRotatef(180.0, 0.0, 1.0, 0.0);
+	glRotatef(90.0, 0.0, 1.0, 0.0);
 	glTranslatef(4.0, -16, 2.5); // Front-right wheel
 	glutSolidTorus(0.5, 1.0, 10, 10);
 	glPopMatrix();
 
 	glPushMatrix();
-	glRotatef(180.0, 0.0, 1.0, 0.0);
+	glRotatef(90.0, 0.0, 1.0, 0.0);
 	glTranslatef(-4.0, -16, -2.5); // Back-left wheel
 	glutSolidTorus(0.5, 1.0, 10, 10);
 	glPopMatrix();
 
 	glPushMatrix();
-	glRotatef(180.0, 0.0, 1.0, 0.0);
+	glRotatef(90.0, 0.0, 1.0, 0.0);
 	glTranslatef(4.0, -16, -2.5); // Back-right wheel
 	glutSolidTorus(0.5, 1.0, 10, 10);
 	glPopMatrix();
