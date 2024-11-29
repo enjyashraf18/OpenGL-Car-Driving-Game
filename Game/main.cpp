@@ -10,16 +10,19 @@
 #define ROWS 2  // rows of cones.
 #define COLUMNS 20 //columns of cones.
 #define FILL_PROBABILITY 50 // Percentage probability that a particular row-column slot will be 
-							 // filled with an cones. It should be an integer between 0 and 100.
+// filled with an cones. It should be an integer between 0 and 100.
 
 // Globals.
-static long font = (long)GLUT_BITMAP_8_BY_13; 
+static long font = (long)GLUT_BITMAP_8_BY_13;
 static int width, height;
 
 // car stuff (coordinates and angle)
 static float angle = 0.0;
 static float xVal = 0, zVal = 0;
 static unsigned int car_display_list; // Display list for the car 
+
+static int displayMessage = 0; // 0: No message, 1: "You lose!", 2: "You won!"
+static float messageStartTime = 0.0f; // Time when the message starts being displayed.
 
 
 static int isCollision = 0; // Is there collision between the spacecraft and an cones?
@@ -61,7 +64,7 @@ Cone::Cone()
 	centerX = 0.0;
 	centerY = 0.0;
 	centerZ = 0.0;
-	radius = 0.0; 
+	radius = 0.0;
 	color[0] = 0;
 	color[1] = 0;
 	color[2] = 0;
@@ -89,8 +92,8 @@ void Cone::draw()
 		glTranslatef(centerX, centerY, centerZ);
 		glColor3ub(255, 165, 0);
 		glRotatef(-90.0, 1.0, 0.0, 0.0);
-		float coneBase = radius ; 
-		float coneHeight = radius * 2.0; 
+		float coneBase = radius;
+		float coneHeight = radius * 2.0;
 		glutWireCone(coneBase, coneHeight, 100, 100);
 		glPopMatrix();
 	}
@@ -188,15 +191,15 @@ void setup(void)
 				// Generate random positions
 				float x = -30.0f + static_cast<float>(rand() % 61);  // Range: [-30, 30]
 				float y = 0.0f; // Constant height for all obstacles
-				float z = -190.0f + static_cast<float>(rand() % 191); 
+				float z = -190.0f + static_cast<float>(rand() % 191);
 
 				// Create a cone (obstacle)
 				arrayCones[i][j] = Cone(
 					x, y, z,                        // Position
 					2.5f,                           // Radius
-					rand() % 256,                   
-					rand() % 256,                   
-					rand() % 256                    
+					rand() % 256,
+					rand() % 256,
+					rand() % 256
 				);
 			}
 		}
@@ -235,8 +238,55 @@ int ConeCarCollision(float x, float z, float a)
 	return 0;
 }
 
+void resetGame() {
+	// Reset car position and angle.
+	xVal = 0.0f;
+	zVal = 0.0f;
+	angle = 0.0f;
+
+	// Reset collision state and messages.
+	isCollision = 0;
+	displayMessage = 0;
+	messageStartTime = 0.0f; // Set start time
+
+	// Reset cones.
+	for (int j = 0; j < COLUMNS; j++) {
+		for (int i = 0; i < ROWS; i++) {
+			if (rand() % 100 < FILL_PROBABILITY) {
+				float x = -30.0f + static_cast<float>(rand() % 61);  // Range: [-30, 30]
+				float y = 0.0f;
+				float z = -190.0f + static_cast<float>(rand() % 191);
+
+				arrayCones[i][j] = Cone(x, y, z, 2.5f, rand() % 256, rand() % 256, rand() % 256);
+			}
+			else {
+				arrayCones[i][j] = Cone(); // Empty cone slot.
+			}
+		}
+	}
+}
+void gameTimer(int value)
+{
+	float currentTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
+
+	// Automatically reset the game after the message is displayed for 3 seconds
+	if (displayMessage > 0)
+	{
+		float elapsedTime = currentTime - messageStartTime;
+		if (elapsedTime >= 3.0f)
+		{
+			resetGame();       // Reset the game state
+			displayMessage = 0; // Clear the message
+		}
+	}
+
+	// Continue to set the timer callback
+	glutTimerFunc(0, gameTimer, 0);
+}
+
+
 // Drawing routine.
-void drawScene(void)
+void drawScene()
 {
 	frameCount++; // Increment number of frames every redraw.
 
@@ -245,18 +295,37 @@ void drawScene(void)
 
 	// Begin left viewport.
 	glViewport(0, 0, width / 2.0, height);
-	glLoadIdentity();	
+	glLoadIdentity();
+
+	// Get the current time in seconds since the program started
+	float currentTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
 
 	// Write text in isolated (i.e., before gluLookAt) translate block.
 	glPushMatrix();
 	glColor3f(1.0, 0.0, 0.0);
 	glRasterPos3f(-28.0, 25.0, -30.0);
-	if (isCollision) writeBitmapString((void*)GLUT_BITMAP_TIMES_ROMAN_24, (char*)"collision");
+
+	// Display messages
+	if (displayMessage > 0)
+	{
+		if (displayMessage == 1)
+		{
+			writeBitmapString((void*)GLUT_BITMAP_TIMES_ROMAN_24, (char*)"You lose!");
+		}
+		else if (displayMessage == 2)
+		{
+			writeBitmapString((void*)GLUT_BITMAP_TIMES_ROMAN_24, (char*)"You won!");
+		}
+	}
+
+	if (isCollision) {
+		displayMessage = 1; // "You lose!" message
+		messageStartTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f; // Set start time
+	}
+
 	if (checkWinCondition(xVal, 0.0f, zVal)) {
-		printf("hi");
-		writeBitmapString((void*)GLUT_BITMAP_TIMES_ROMAN_24, (char*)"You won!");
-
-
+		displayMessage = 2; // "You won!" message
+		messageStartTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f; // Set start time
 	}
 
 	glPopMatrix();
@@ -318,19 +387,6 @@ void drawScene(void)
 	glViewport(width / 2.0, 0, width / 2.0, height);
 	glLoadIdentity();
 
-	glPushMatrix();
-	glColor3f(1.0, 0.0, 0.0);
-	glRasterPos3f(-28.0, 25.0, -30.0);
-	if (isCollision) writeBitmapString((void*)GLUT_BITMAP_TIMES_ROMAN_24, (char*)"collision");
-	if (checkWinCondition(xVal, 0.0f, zVal)) {
-		printf("hi");
-		writeBitmapString((void*)GLUT_BITMAP_TIMES_ROMAN_24, (char*)"You won!");
-
-
-	}
-
-	glPopMatrix();
-
 	// Draw a vertical line on the left of the viewport to separate the two viewports
 	glColor3f(1.0, 1.0, 1.0);
 	glLineWidth(2.0);
@@ -374,6 +430,7 @@ void drawScene(void)
 	glutSolidCube(1.0f);
 	glPopMatrix();
 	// End right viewport.
+
 
 	glutSwapBuffers();
 }
@@ -438,9 +495,6 @@ void specialKeyInput(int key, int x, int y)
 	}
 	else isCollision = 1;
 
-	
-
-
 	glutPostRedisplay();
 }
 
@@ -474,6 +528,8 @@ int main(int argc, char** argv)
 	glewInit();
 
 	setup();
+	glutTimerFunc(0, gameTimer, 0); // Start the game timer.
+
 
 	glutMainLoop();
 }
