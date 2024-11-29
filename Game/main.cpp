@@ -24,7 +24,6 @@ static unsigned int car_display_list; // Display list for the car
 static int displayMessage = 0; // 0: No message, 1: "You lose!", 2: "You won!"
 static float messageStartTime = 0.0f; // Time when the message starts being displayed.
 
-
 static int isCollision = 0; // Is there collision between the spacecraft and an cones?
 static unsigned int spacecraft; // Display lists base index.
 static int frameCount = 0; // Number of frames
@@ -248,7 +247,7 @@ void resetGame() {
 	isCollision = 0;
 	displayMessage = 0;
 	messageStartTime = 0.0f; // Set start time
-
+	
 	// Reset cones.
 	for (int j = 0; j < COLUMNS; j++) {
 		for (int i = 0; i < ROWS; i++) {
@@ -277,6 +276,7 @@ void gameTimer(int value)
 		{
 			resetGame();       // Reset the game state
 			displayMessage = 0; // Clear the message
+			glutPostRedisplay();
 		}
 	}
 
@@ -465,6 +465,7 @@ void keyInput(unsigned char key, int x, int y)
 // Callback routine for non-ASCII key entry.
 void specialKeyInput(int key, int x, int y)
 {
+
 	float tempxVal = xVal, tempzVal = zVal, tempAngle = angle;
 
 	// Compute next position.
