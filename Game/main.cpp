@@ -3,14 +3,14 @@
 #include <cstdlib>
 #include <cmath>
 #include <iostream>
-
+#include <glm.hpp>
 #include <GL/glew.h>
 #include <GL/freeglut.h> 
 
 #define ROWS 2  // rows of cones.
 #define COLUMNS 20 //columns of cones.
-#define FILL_PROBABILITY 50 // Percentage probability that a particular row-column slot will be 
-// filled with an cones. It should be an integer between 0 and 100.
+#define FILL_PROBABILITY 10 // Percentage probability that a particular row-column slot will be 
+// filled with cones. It should be an integer between 0 and 100.
 
 // Globals.
 static long font = (long)GLUT_BITMAP_8_BY_13;
@@ -32,6 +32,14 @@ static float gateX = 0.0f, gateY = 0.0f, gateZ = -250.0f; // Fixed position of t
 static float gateLength = 25.0f;
 static float gateHeight = 30.0f;
 static float gateDepth = 10.0f; // Depth of the gate
+
+// Flags for key states
+bool moveForwardFlag = false;
+bool moveBackwardFlag = false;
+bool moveRightFlag = false;
+bool moveLeftFlag = false;
+
+float speed = 1.;
 
 // Routine to draw a bitmap character string.
 void writeBitmapString(void* font, char* string)
@@ -209,7 +217,6 @@ void setup(void)
 
 	glutTimerFunc(0, frameCounter, 0); // Initial call of frameCounter().
 }
-
 // Function to check if two spheres centered at (x1,y1,z1) and (x2,y2,z2) with
 // radius r1 and r2 intersect.
 int checkSpheresIntersection(float x1, float y1, float z1, float r1,
@@ -236,6 +243,54 @@ int ConeCarCollision(float x, float z, float a)
 					return 1;
 	return 0;
 }
+//Camera movement functions (based on the flags)
+void updateMovement()
+{
+	float tempxVal = xVal, tempzVal = zVal, tempAngle = angle;
+
+	if (moveForwardFlag)
+	{
+		std::cout << "f " << std::endl;
+		tempxVal = tempxVal - sin(angle * M_PI / 180.0);
+		tempzVal = tempzVal - cos(angle * M_PI / 180.0);
+	}
+
+	if (moveBackwardFlag)
+	{
+		std::cout << "b " << std::endl;
+		tempxVal = tempxVal + sin(angle * M_PI / 180.0);
+		tempzVal = tempzVal + cos(angle * M_PI / 180.0);
+	}
+
+	if (moveRightFlag)
+	{
+		std::cout << "r " << std::endl;
+		tempAngle = tempAngle - 5.0;
+	}
+
+	if (moveLeftFlag)
+	{
+		std::cout << "l " << std::endl;
+		tempAngle = tempAngle + 5.0;
+	}
+	// Angle correction.
+	if (tempAngle > 360.0) tempAngle -= 360.0;
+	if (tempAngle < 0.0) tempAngle += 360.0;
+
+	// Move spacecraft to next position only if there will not be collision with an asteroid.
+	if (!ConeCarCollision(tempxVal, tempzVal, tempAngle))
+	{
+		isCollision = 0;
+		xVal = tempxVal;
+		zVal = tempzVal;
+		angle = tempAngle;
+	}
+	else isCollision = 1;
+
+	//glutPostRedisplay();
+}
+
+
 
 void resetGame() {
 	// Reset car position and angle.
@@ -272,7 +327,7 @@ void gameTimer(int value)
 	if (displayMessage > 0)
 	{
 		float elapsedTime = currentTime - messageStartTime;
-		if (elapsedTime >= 3.0f)
+		if (elapsedTime >= 2.0f)
 		{
 			resetGame();       // Reset the game state
 			displayMessage = 0; // Clear the message
@@ -289,7 +344,7 @@ void gameTimer(int value)
 void drawScene()
 {
 	frameCount++; // Increment number of frames every redraw.
-
+	updateMovement();
 	int i, j;
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -331,7 +386,11 @@ void drawScene()
 	glPopMatrix();
 
 	// Fixed camera.
-	gluLookAt(0.0, 10.0, 20.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+	/*gluLookAt(0.0, 10.0, 20.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);*/
+	//gluLookAt(eye.x, eye.y, eye.z, center.x, center.y, center.z, up.x, up.y, up.z);
+	gluLookAt(xVal - 10 * sin((M_PI / 180.0) * angle), 10, zVal - 10 * cos((M_PI / 180.0) * angle) + 30,
+		xVal - 11 * sin((M_PI / 180.0) * angle), 0.0, zVal - 11 * cos((M_PI / 180.0) * angle),
+		0.0, 1.0, 0.0);
 
 
 	// Road
@@ -397,15 +456,9 @@ void drawScene()
 	glLineWidth(1.0);
 
 	// Locate the camera at the tip of the car and pointing in the direction of the car.
-	gluLookAt(xVal - 10 * sin((M_PI / 180.0) * angle),
-		0.0,
-		zVal - 10 * cos((M_PI / 180.0) * angle),
-		xVal - 11 * sin((M_PI / 180.0) * angle),
-		0.0,
-		zVal - 11 * cos((M_PI / 180.0) * angle),
-		0.0,
-		1.0,
-		0.0);
+	gluLookAt(xVal - 10 * sin((M_PI / 180.0) * angle), 0.0, zVal - 10 * cos((M_PI / 180.0) * angle), 
+		xVal - 11 * sin((M_PI / 180.0) * angle), 0.0, zVal - 11 * cos((M_PI / 180.0) * angle),
+		0.0, 1.0, 0.0);
 
 	glPushMatrix();
 	glColor3f(0.2f, 0.2f, 0.2f); // Dark gray color for the street.
@@ -462,43 +515,59 @@ void keyInput(unsigned char key, int x, int y)
 	}
 }
 
+
+
 // Callback routine for non-ASCII key entry.
 void specialKeyInput(int key, int x, int y)
 {
 
-	float tempxVal = xVal, tempzVal = zVal, tempAngle = angle;
-
 	// Compute next position.
-	if (key == GLUT_KEY_LEFT) tempAngle = angle + 5.0;
-	if (key == GLUT_KEY_RIGHT) tempAngle = angle - 5.0;
-	if (key == GLUT_KEY_UP)
+	if (key == GLUT_KEY_LEFT) 
 	{
-		tempxVal = xVal - sin(angle * M_PI / 180.0);
-		tempzVal = zVal - cos(angle * M_PI / 180.0);
+		moveLeftFlag = true;
 	}
-	if (key == GLUT_KEY_DOWN)
+	if (key == GLUT_KEY_RIGHT) 
 	{
-		tempxVal = xVal + sin(angle * M_PI / 180.0);
-		tempzVal = zVal + cos(angle * M_PI / 180.0);
+		moveRightFlag = true;
 	}
-
-	// Angle correction.
-	if (tempAngle > 360.0) tempAngle -= 360.0;
-	if (tempAngle < 0.0) tempAngle += 360.0;
-
-	// Move spacecraft to next position only if there will not be collision with an asteroid.
-	if (!ConeCarCollision(tempxVal, tempzVal, tempAngle))
+	if (key == GLUT_KEY_UP) 
 	{
-		isCollision = 0;
-		xVal = tempxVal;
-		zVal = tempzVal;
-		angle = tempAngle;
+		moveForwardFlag = true;
 	}
-	else isCollision = 1;
+	if (key == GLUT_KEY_DOWN) 
+	{
+		moveBackwardFlag = true;
+	}
 
 	glutPostRedisplay();
+	//updateMovement();
 }
 
+
+void specialKeyUp(int key, int x, int y)
+{
+	switch (key) {
+	case GLUT_KEY_LEFT:
+		moveLeftFlag = false;
+		std::cout << "released left " << moveLeftFlag << std::endl;
+		break;
+	case GLUT_KEY_RIGHT:
+		moveRightFlag = false;
+		std::cout << "released right " << moveRightFlag << std::endl;
+		break;
+	case GLUT_KEY_UP:
+		moveForwardFlag = false;
+		std::cout << "released up " << moveForwardFlag<< std::endl;
+		break;
+	case GLUT_KEY_DOWN:
+		moveBackwardFlag = false;
+		std::cout << "released down " << moveBackwardFlag<< std::endl;
+		break;
+	default:
+		break;
+	}
+	glutPostRedisplay();
+}
 // Routine to output interaction instructions to the C++ window.
 void printInteraction(void)
 {
@@ -524,6 +593,7 @@ int main(int argc, char** argv)
 	glutReshapeFunc(resize);
 	glutKeyboardFunc(keyInput);
 	glutSpecialFunc(specialKeyInput);
+	glutSpecialUpFunc(specialKeyUp);
 
 	glewExperimental = GL_TRUE;
 	glewInit();
