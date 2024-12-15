@@ -3,18 +3,23 @@
 #include <cstdlib>
 #include <cmath>
 #include <iostream>
+#include <fstream>
 #include <glm.hpp>
 #include <GL/glew.h>
 #include <GL/freeglut.h> 
-
+#include "getBMP.h"
 #define ROWS 2  // rows of cones.
 #define COLUMNS 20 //columns of cones.
 #define FILL_PROBABILITY 10 // Percentage probability that a particular row-column slot will be 
 // filled with cones. It should be an integer between 0 and 100.
 
 // Globals.
+static unsigned int texture[3]; // Array of texture indices.
+static unsigned int current_ground_texture;
 static long font = (long)GLUT_BITMAP_8_BY_13;
 static int width, height;
+static float skyAngle = 0.0; // Angle of rotation of sky coordinates.
+static int animationPeriod = 100; // Time interval between frames.
 
 // car stuff (coordinates and angle)
 static float angle = 0.0;
@@ -39,7 +44,64 @@ bool moveBackwardFlag = false;
 bool moveRightFlag = false;
 bool moveLeftFlag = false;
 
-float speed = 1.;
+
+// Timer function. sky animation
+void animate(int value)
+{
+	skyAngle += 0.01;
+	if (skyAngle > 360.0) skyAngle -= 360.0;
+	glutPostRedisplay();
+	glutTimerFunc(animationPeriod, animate, 1);
+}
+
+// Load external textures.
+void loadTextures()
+{
+	// Local storage for bmp image data.
+	imageFile* image[3];
+
+	// Load the images.
+	image[0] = getBMP("grass.bmp");
+	image[1] = getBMP("sky.bmp");
+	image[2] = getBMP("desert_texture.bmp");
+
+	// Bind grass image to texture object texture[0]. 
+	glBindTexture(GL_TEXTURE_2D, texture[0]);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image[0]->width, image[0]->height, 0,
+		GL_RGBA, GL_UNSIGNED_BYTE, image[0]->data);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Use mipmap linear filtering
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Use linear filtering for magnification
+
+	// Generate mipmaps for the grass texture.
+	glGenerateMipmap(GL_TEXTURE_2D);
+
+	// Bind sky image to texture object texture[1].
+	glBindTexture(GL_TEXTURE_2D, texture[1]);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image[1]->width, image[1]->height, 0,
+		GL_RGBA, GL_UNSIGNED_BYTE, image[1]->data);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Use mipmap linear filtering
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Use linear filtering for magnification
+
+	// Generate mipmaps for the ground texture.
+	glGenerateMipmap(GL_TEXTURE_2D);
+
+	// Bind ground image to texture object texture[2]. 
+	glBindTexture(GL_TEXTURE_2D, texture[2]);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image[2]->width, image[2]->height, 0,
+		GL_RGBA, GL_UNSIGNED_BYTE, image[2]->data);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR); // Use mipmap linear filtering
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Use linear filtering for magnification
+
+	// Generate mipmaps for the ground texture.
+	glGenerateMipmap(GL_TEXTURE_2D);
+}
+
 
 // Routine to draw a bitmap character string.
 void writeBitmapString(void* font, char* string)
@@ -133,6 +195,60 @@ void frameCounter(int value)
 	glutTimerFunc(1000, frameCounter, 1);
 }
 
+
+// The top menu callback function.
+void top_menu(int id)
+{
+	if (id == 1) current_ground_texture = texture[0];
+	if (id == 2) current_ground_texture = texture[2];
+	if (id == 3)
+	{
+		exit(0);
+	}
+	glutPostRedisplay();
+}
+
+// Routine to make the menu.
+void makeMenu(void)
+{
+	// The top menu is created: its callback function is registered and menu entries,
+	// including a submenu, added.
+	glutCreateMenu(top_menu);
+	glutAddMenuEntry("Grass", 1);
+	glutAddMenuEntry("Desert", 2);
+	glutAddMenuEntry("Quit", 3);
+
+	// The menu is attached to a mouse button.
+	glutAttachMenu(GLUT_RIGHT_BUTTON);
+}
+void resetGame() {
+	// Reset car position and angle.
+	xVal = 0.0f;
+	zVal = 0.0f;
+	angle = 0.0f;
+
+	// Reset collision state and messages.
+	isCollision = 0;
+	displayMessage = 0;
+	messageStartTime = 0.0f; // Set start time
+	
+	// Reset cones.
+	for (int j = 0; j < COLUMNS; j++) {
+		for (int i = 0; i < ROWS; i++) {
+			if (rand() % 100 < FILL_PROBABILITY) {
+				float x = -30.0f + static_cast<float>(rand() % 61);  // Range: [-30, 30]
+				float y = -4.4;
+				float z = -190.0f + static_cast<float>(rand() % 191);
+
+				arrayCones[i][j] = Cone(x, y, z, 2.5f, rand() % 256, rand() % 256, rand() % 256);
+			}
+			else {
+				arrayCones[i][j] = Cone(); // Empty cone slot.
+			}
+		}
+	}
+}
+
 // Initialization routine.
 void setup(void)
 {
@@ -197,7 +313,7 @@ void setup(void)
 			if (rand() % 100 < FILL_PROBABILITY) {
 				// Generate random positions
 				float x = -30.0f + static_cast<float>(rand() % 61);  // Range: [-30, 30]
-				float y = 0.0f; // Constant height for all obstacles
+				float y = -4.4; // Constant height for all obstacles
 				float z = -190.0f + static_cast<float>(rand() % 191);
 
 				// Create a cone (obstacle)
@@ -214,8 +330,25 @@ void setup(void)
 
 	glEnable(GL_DEPTH_TEST);
 	glClearColor(0.0, 0.0, 0.0, 0.0);
+	// Create texture ids.
+	glGenTextures(3, texture);
 
+	// Load external textures.
+	loadTextures();
+	current_ground_texture = texture[0];
+
+	// Specify how texture values combine with current surface color values.
+	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+
+	// Enable textures
+	glEnable(GL_TEXTURE_2D);
+
+	// Set texture environment mode to GL_MODULATE (combine texture with color)
+	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 	glutTimerFunc(0, frameCounter, 0); // Initial call of frameCounter().
+	animate(1);
+	// Make menu.
+	makeMenu();
 }
 // Function to check if two spheres centered at (x1,y1,z1) and (x2,y2,z2) with
 // radius r1 and r2 intersect.
@@ -250,27 +383,27 @@ void updateMovement()
 
 	if (moveForwardFlag)
 	{
-		std::cout << "f " << std::endl;
+		//std::cout << "f " << std::endl;
 		tempxVal = tempxVal - sin(angle * M_PI / 180.0);
 		tempzVal = tempzVal - cos(angle * M_PI / 180.0);
 	}
 
 	if (moveBackwardFlag)
 	{
-		std::cout << "b " << std::endl;
+		//std::cout << "b " << std::endl;
 		tempxVal = tempxVal + sin(angle * M_PI / 180.0);
 		tempzVal = tempzVal + cos(angle * M_PI / 180.0);
 	}
 
 	if (moveRightFlag)
 	{
-		std::cout << "r " << std::endl;
+		//std::cout << "r " << std::endl;
 		tempAngle = tempAngle - 5.0;
 	}
 
 	if (moveLeftFlag)
 	{
-		std::cout << "l " << std::endl;
+		//std::cout << "l " << std::endl;
 		tempAngle = tempAngle + 5.0;
 	}
 	// Angle correction.
@@ -292,33 +425,6 @@ void updateMovement()
 
 
 
-void resetGame() {
-	// Reset car position and angle.
-	xVal = 0.0f;
-	zVal = 0.0f;
-	angle = 0.0f;
-
-	// Reset collision state and messages.
-	isCollision = 0;
-	displayMessage = 0;
-	messageStartTime = 0.0f; // Set start time
-	
-	// Reset cones.
-	for (int j = 0; j < COLUMNS; j++) {
-		for (int i = 0; i < ROWS; i++) {
-			if (rand() % 100 < FILL_PROBABILITY) {
-				float x = -30.0f + static_cast<float>(rand() % 61);  // Range: [-30, 30]
-				float y = 0.0f;
-				float z = -190.0f + static_cast<float>(rand() % 191);
-
-				arrayCones[i][j] = Cone(x, y, z, 2.5f, rand() % 256, rand() % 256, rand() % 256);
-			}
-			else {
-				arrayCones[i][j] = Cone(); // Empty cone slot.
-			}
-		}
-	}
-}
 void gameTimer(int value)
 {
 	float currentTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
@@ -386,21 +492,42 @@ void drawScene()
 	glPopMatrix();
 
 	// Fixed camera.
-	/*gluLookAt(0.0, 10.0, 20.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);*/
-	//gluLookAt(eye.x, eye.y, eye.z, center.x, center.y, center.z, up.x, up.y, up.z);
 	gluLookAt(xVal - 10 * sin((M_PI / 180.0) * angle), 10, zVal - 10 * cos((M_PI / 180.0) * angle) + 30,
 		xVal - 11 * sin((M_PI / 180.0) * angle), 0.0, zVal - 11 * cos((M_PI / 180.0) * angle),
 		0.0, 1.0, 0.0);
 
+	glColor3f(1.0, 1.0, 1.0);
+	// Grass texture mapping (x-z plane)
+	glBindTexture(GL_TEXTURE_2D, current_ground_texture);
+	glBegin(GL_POLYGON);
+	glTexCoord2f(0.0, 0.0); glVertex3f(-200, -4.5, 200);
+	glTexCoord2f(8.0, 0.0); glVertex3f(200, -4.5, 200);
+	glTexCoord2f(8.0, 8.0); glVertex3f(200, -4.5, zVal - 250);
+	glTexCoord2f(0.0, 8.0); glVertex3f(-200, -4.5, zVal - 250);
+	glEnd();
 
+	glMatrixMode(GL_TEXTURE);
+	glPushMatrix();
+	glTranslatef(0.1 * cos(skyAngle), 0.1 * sin(skyAngle), 0.0);
+	// Sky texture mapping (xy plane)
+	glBindTexture(GL_TEXTURE_2D, texture[1]);
+	glBegin(GL_POLYGON);
+	glTexCoord2f(0.0, 0.0); glVertex3f(-200, -5, zVal - 150);
+	glTexCoord2f(1.0, 0.0); glVertex3f(200, -5, zVal - 150);
+	glTexCoord2f(1.0, 1.0); glVertex3f(200, 120.0, zVal - 200);
+	glTexCoord2f(0.0, 1.0); glVertex3f(-200, 120.0, zVal - 200);
+	glEnd();
+	glPopMatrix();
+
+	glMatrixMode(GL_MODELVIEW);
 	// Road
 	glPushMatrix();
-	glColor3f(0.1f, 0.1f, 0.1f); // Dark gray color for the street.
+	glColor3f(0.4f, 0.4f, 0.4f); // Dark gray color for the street.
 	glBegin(GL_QUADS);
-	glVertex3f(-40.0f, -5.f, 50.0f);  // Bottom-left corner.
-	glVertex3f(40.0f, -5.0f, 50.0f);   // Bottom-right corner.
-	glVertex3f(40.0f, -5.0f, gateZ); // Top-right corner.
-	glVertex3f(-40.0f, -5.0f, gateZ); // Top-left corner.
+	glVertex3f(-30, -4.4f, 50.0f);  // Bottom-left corner.
+	glVertex3f(30, -4.4f, 50.0f);   // Bottom-right corner.
+	glVertex3f(30, -4.4, gateZ); // Top-right corner.
+	glVertex3f(-30, -4.4, gateZ); // Top-left corner.
 	glEnd();
 
 	// Add road lines in the middle
@@ -408,19 +535,17 @@ void drawScene()
 	glColor3f(1.0f, 1.0f, 1.0f); // White color for the road lines
 	// Right line
 	glBegin(GL_LINES);
-	glVertex3f(5.0f, -5.01f, 50.0f); // Starting point of the second line.
-	glVertex3f(5.0f, -5.01f, gateZ); // Ending point of the second line.
+	glVertex3f(5.0f, -4.4, 50.0f); // Starting point of the second line.
+	glVertex3f(5.0f, -4.4, gateZ); // Ending point of the second line.
 	glEnd();
 
 	// Left line
 	glBegin(GL_LINES);
-	glVertex3f(-5.0f, -5.01f, 50.0f);  // Starting point of the first line.
-	glVertex3f(-5.0f, -5.01f, gateZ);  // Ending point of the first line.
+	glVertex3f(-5.0f, -4.4f, 50.0f);  // Starting point of the first line.
+	glVertex3f(-5.0f, -4.4, gateZ);  // Ending point of the first line.
 	glEnd();
 
 	glPopMatrix();
-
-
 
 	// Draw all the cones.
 	for (j = 0; j < COLUMNS; j++)
@@ -433,9 +558,14 @@ void drawScene()
 	glRotatef(angle, 0.0, 1.0, 0.0);
 	glCallList(car_display_list);
 	glPopMatrix();
-	//gate
+
+	// gate
 	glPushMatrix();
-	glTranslatef(gateX, 0.0, gateZ);
+	if (zVal > -100)
+	{
+		glTranslatef(gateX, 0.0, zVal - 150);
+	}
+	else glTranslatef(gateX, 0.0, gateZ);
 	glColor3f(1.0f, 1.0f, 1.0f);
 	glScalef(gateLength, gateHeight, gateDepth);
 	glutSolidCube(1.0f);
@@ -456,18 +586,18 @@ void drawScene()
 	glLineWidth(1.0);
 
 	// Locate the camera at the tip of the car and pointing in the direction of the car.
-	gluLookAt(xVal - 10 * sin((M_PI / 180.0) * angle), 0.0, zVal - 10 * cos((M_PI / 180.0) * angle), 
+	gluLookAt(xVal - 10 * sin((M_PI / 180.0) * angle), 0.0, zVal - 10 * cos((M_PI / 180.0) * angle),
 		xVal - 11 * sin((M_PI / 180.0) * angle), 0.0, zVal - 11 * cos((M_PI / 180.0) * angle),
 		0.0, 1.0, 0.0);
 
 	glPushMatrix();
 	glColor3f(0.2f, 0.2f, 0.2f); // Dark gray color for the street.
 	glBegin(GL_QUADS);
-	//road
-	glVertex3f(-40.0f, -0.1f, 50.0f);  // Bottom-left corner.
-	glVertex3f(40.0f, -0.1f, 50.0f);   // Bottom-right corner.
-	glVertex3f(40.0f, -0.1f, -300.0f); // Top-right corner.
-	glVertex3f(-40.0f, -0.1f, -300.0f); // Top-left corner.
+	// road
+	glVertex3f(-40.0f, -4.4, 50.0f);  // Bottom-left corner.
+	glVertex3f(40.0f, -4.4, 50.0f);   // Bottom-right corner.
+	glVertex3f(40.0f, -4.4, -300.0f); // Top-right corner.
+	glVertex3f(-40.0f, -4.4, -300.0f); // Top-left corner.
 	glEnd();
 	glPopMatrix();
 
@@ -475,6 +605,7 @@ void drawScene()
 	for (j = 0; j < COLUMNS; j++)
 		for (i = 0; i < ROWS; i++)
 			arrayCones[i][j].draw();
+
 	// gate
 	glPushMatrix();
 	glTranslatef(gateX, 15.0, gateZ);
@@ -483,7 +614,6 @@ void drawScene()
 	glutSolidCube(1.0f);
 	glPopMatrix();
 	// End right viewport.
-
 
 	glutSwapBuffers();
 }
@@ -540,7 +670,6 @@ void specialKeyInput(int key, int x, int y)
 	}
 
 	glutPostRedisplay();
-	//updateMovement();
 }
 
 
@@ -549,19 +678,19 @@ void specialKeyUp(int key, int x, int y)
 	switch (key) {
 	case GLUT_KEY_LEFT:
 		moveLeftFlag = false;
-		std::cout << "released left " << moveLeftFlag << std::endl;
+		//std::cout << "released left " << moveLeftFlag << std::endl;
 		break;
 	case GLUT_KEY_RIGHT:
 		moveRightFlag = false;
-		std::cout << "released right " << moveRightFlag << std::endl;
+		//std::cout << "released right " << moveRightFlag << std::endl;
 		break;
 	case GLUT_KEY_UP:
 		moveForwardFlag = false;
-		std::cout << "released up " << moveForwardFlag<< std::endl;
+		//std::cout << "released up " << moveForwardFlag<< std::endl;
 		break;
 	case GLUT_KEY_DOWN:
 		moveBackwardFlag = false;
-		std::cout << "released down " << moveBackwardFlag<< std::endl;
+		//std::cout << "released down " << moveBackwardFlag<< std::endl;
 		break;
 	default:
 		break;
@@ -573,7 +702,8 @@ void printInteraction(void)
 {
 	std::cout << "Interaction:" << std::endl;
 	std::cout << "Press the left/right arrow keys to turn the craft." << std::endl
-		<< "Press the up/down arrow keys to move the craft." << std::endl;
+		<< "Press the up/down arrow keys to move the craft." << std::endl
+		<< "Right click the mouse to change ground texture." << std::endl;
 }
 
 // Main routine.
