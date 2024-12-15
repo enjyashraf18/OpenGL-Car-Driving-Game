@@ -3,7 +3,7 @@
 #include <cstdlib>
 #include <cmath>
 #include <iostream>
-#include <glm.hpp>
+#include <glm/glm.hpp>
 #include <GL/glew.h>
 #include <GL/freeglut.h> 
 
@@ -215,8 +215,78 @@ void setup(void)
 	glEnable(GL_DEPTH_TEST);
 	glClearColor(0.0, 0.0, 0.0, 0.0);
 
+	glEnable(GL_LIGHTING);
+	glEnable(GL_LIGHT0);
+
+	GLfloat light_ambient[] = { 0.4f, 0.4f, 0.4f, 1.0f };  // Dim ambient light
+	GLfloat light_diffuse[] = { 1.0f, 0.8f, 0.5f, 1.0f };  // Orange-reddish diffuse light
+	GLfloat light_specular[] = { 1.0f, 0.9f, 0.7f, 1.0f }; // Subtle specular highlight
+	// Position/direction vector (w=0 means directional light)
+	GLfloat light_position[] = { -1.0f, 0.5f, -1.0f, 0.0f };
+
+	glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient);
+	glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse);
+	glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
+	glLightfv(GL_LIGHT0, GL_POSITION, light_position);
+
+	glEnable(GL_NORMALIZE);
+
+
+
 	glutTimerFunc(0, frameCounter, 0); // Initial call of frameCounter().
 }
+
+
+void setCarMaterial() {
+	GLfloat mat_ambient[] = { 0.2f, 0.3f, 0.3f, 1.0f };
+	GLfloat mat_diffuse[] = { 0.0f, 0.8f, 0.8f, 1.0f };
+	GLfloat mat_specular[] = { 0.8f, 0.8f, 0.8f, 1.0f };
+	GLfloat mat_shininess[] = { 50.0f };
+
+	glMaterialfv(GL_FRONT, GL_AMBIENT, mat_ambient);
+	glMaterialfv(GL_FRONT, GL_DIFFUSE, mat_diffuse);
+	glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
+	glMaterialf(GL_FRONT, GL_SHININESS, mat_shininess[0]);
+}
+
+void setRoadMaterial() {
+	GLfloat mat_ambient[] = { 0.2f, 0.2f, 0.2f, 1.0f };
+	GLfloat mat_diffuse[] = { 0.3f, 0.3f, 0.3f, 1.0f };
+	GLfloat mat_specular[] = { 0.2f, 0.2f, 0.2f, 1.0f };
+	GLfloat mat_shininess[] = { 10.0f };
+
+	glMaterialfv(GL_FRONT, GL_AMBIENT, mat_ambient);
+	glMaterialfv(GL_FRONT, GL_DIFFUSE, mat_diffuse);
+	glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
+	glMaterialf(GL_FRONT, GL_SHININESS, mat_shininess[0]);
+}
+
+void setConeMaterial() {
+	GLfloat mat_ambient[] = { 0.4f, 0.2f, 0.0f, 1.0f };
+	GLfloat mat_diffuse[] = { 1.0f, 0.6f, 0.0f, 1.0f };
+	GLfloat mat_specular[] = { 0.5f, 0.5f, 0.5f, 1.0f };
+	GLfloat mat_shininess[] = { 20.0f };
+
+	glMaterialfv(GL_FRONT, GL_AMBIENT, mat_ambient);
+	glMaterialfv(GL_FRONT, GL_DIFFUSE, mat_diffuse);
+	glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
+	glMaterialf(GL_FRONT, GL_SHININESS, mat_shininess[0]);
+}
+
+// Gate material (white metallic)
+void setGateMaterial() {
+	GLfloat mat_ambient[] = { 0.4f, 0.4f, 0.4f, 1.0f };
+	GLfloat mat_diffuse[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+	GLfloat mat_specular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+	GLfloat mat_shininess[] = { 60.0f };
+
+	glMaterialfv(GL_FRONT, GL_AMBIENT, mat_ambient);
+	glMaterialfv(GL_FRONT, GL_DIFFUSE, mat_diffuse);
+	glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
+	glMaterialf(GL_FRONT, GL_SHININESS, mat_shininess[0]);
+}
+
+
 // Function to check if two spheres centered at (x1,y1,z1) and (x2,y2,z2) with
 // radius r1 and r2 intersect.
 int checkSpheresIntersection(float x1, float y1, float z1, float r1,
@@ -302,7 +372,7 @@ void resetGame() {
 	isCollision = 0;
 	displayMessage = 0;
 	messageStartTime = 0.0f; // Set start time
-	
+
 	// Reset cones.
 	for (int j = 0; j < COLUMNS; j++) {
 		for (int i = 0; i < ROWS; i++) {
@@ -357,7 +427,8 @@ void drawScene()
 
 	// Write text in isolated (i.e., before gluLookAt) translate block.
 	glPushMatrix();
-	glColor3f(1.0, 0.0, 0.0);
+	glDisable(GL_LIGHTING);
+	glColor3f(1.0, 1.0, 1.0);
 	glRasterPos3f(-28.0, 25.0, -30.0);
 
 	// Display messages
@@ -383,6 +454,7 @@ void drawScene()
 		messageStartTime = glutGet(GLUT_ELAPSED_TIME) / 1000.0f; // Set start time
 	}
 
+	glEnable(GL_LIGHTING);
 	glPopMatrix();
 
 	// Fixed camera.
@@ -395,6 +467,7 @@ void drawScene()
 
 	// Road
 	glPushMatrix();
+	setRoadMaterial();
 	glColor3f(0.1f, 0.1f, 0.1f); // Dark gray color for the street.
 	glBegin(GL_QUADS);
 	glVertex3f(-40.0f, -5.f, 50.0f);  // Bottom-left corner.
@@ -421,7 +494,7 @@ void drawScene()
 	glPopMatrix();
 
 
-
+	setConeMaterial();
 	// Draw all the cones.
 	for (j = 0; j < COLUMNS; j++)
 		for (i = 0; i < ROWS; i++)
@@ -429,12 +502,14 @@ void drawScene()
 
 	// Draw car
 	glPushMatrix();
+	setCarMaterial();
 	glTranslatef(xVal, 15.0, zVal);
 	glRotatef(angle, 0.0, 1.0, 0.0);
 	glCallList(car_display_list);
 	glPopMatrix();
 	//gate
 	glPushMatrix();
+	setGateMaterial();
 	glTranslatef(gateX, 0.0, gateZ);
 	glColor3f(1.0f, 1.0f, 1.0f);
 	glScalef(gateLength, gateHeight, gateDepth);
@@ -456,7 +531,7 @@ void drawScene()
 	glLineWidth(1.0);
 
 	// Locate the camera at the tip of the car and pointing in the direction of the car.
-	gluLookAt(xVal - 10 * sin((M_PI / 180.0) * angle), 0.0, zVal - 10 * cos((M_PI / 180.0) * angle), 
+	gluLookAt(xVal - 10 * sin((M_PI / 180.0) * angle), 0.0, zVal - 10 * cos((M_PI / 180.0) * angle),
 		xVal - 11 * sin((M_PI / 180.0) * angle), 0.0, zVal - 11 * cos((M_PI / 180.0) * angle),
 		0.0, 1.0, 0.0);
 
@@ -522,19 +597,19 @@ void specialKeyInput(int key, int x, int y)
 {
 
 	// Compute next position.
-	if (key == GLUT_KEY_LEFT) 
+	if (key == GLUT_KEY_LEFT)
 	{
 		moveLeftFlag = true;
 	}
-	if (key == GLUT_KEY_RIGHT) 
+	if (key == GLUT_KEY_RIGHT)
 	{
 		moveRightFlag = true;
 	}
-	if (key == GLUT_KEY_UP) 
+	if (key == GLUT_KEY_UP)
 	{
 		moveForwardFlag = true;
 	}
-	if (key == GLUT_KEY_DOWN) 
+	if (key == GLUT_KEY_DOWN)
 	{
 		moveBackwardFlag = true;
 	}
@@ -557,11 +632,11 @@ void specialKeyUp(int key, int x, int y)
 		break;
 	case GLUT_KEY_UP:
 		moveForwardFlag = false;
-		std::cout << "released up " << moveForwardFlag<< std::endl;
+		std::cout << "released up " << moveForwardFlag << std::endl;
 		break;
 	case GLUT_KEY_DOWN:
 		moveBackwardFlag = false;
-		std::cout << "released down " << moveBackwardFlag<< std::endl;
+		std::cout << "released down " << moveBackwardFlag << std::endl;
 		break;
 	default:
 		break;
