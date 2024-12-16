@@ -10,7 +10,7 @@
 #include "getBMP.h"
 #define ROWS 2				// rows of cones.
 #define COLUMNS 20			// columns of cones.
-#define FILL_PROBABILITY 10 // Percentage probability that a particular row-column slot will be
+#define FILL_PROBABILITY 15 // Percentage probability that a particular row-column slot will be
 // filled with cones. It should be an integer between 0 and 100.
 
 // Globals.
