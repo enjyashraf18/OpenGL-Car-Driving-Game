@@ -76,8 +76,8 @@ void loadTextures()
 
 	// Load the images.
 	image[0] = getBMP("grass.bmp");
-	image[1] = getBMP("sky.bmp");
-	image[2] = getBMP("desert_texture.bmp");
+	image[1] = getBMP("dawnSky.bmp");
+	image[2] = getBMP("desert_texture2.bmp");
 
 	// Bind grass image to texture object texture[0].
 	glBindTexture(GL_TEXTURE_2D, texture[0]);
